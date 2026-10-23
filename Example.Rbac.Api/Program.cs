@@ -1,8 +1,11 @@
-using Scalar.AspNetCore;
+using Example.Rbac.Api;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddHttpContextAccessor();
+builder.Services.ConfigureServices(builder.Configuration);
 
 var app = builder.Build();
 
