@@ -1,6 +1,4 @@
-﻿using Example.Rbac.Api.Interfaces;
-
-namespace Example.Rbac.Api.Persistence;
+﻿namespace Example.Rbac.Api.Persistence;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options, ISessionWrapper sessionWrapper): DbContext(options)
 {

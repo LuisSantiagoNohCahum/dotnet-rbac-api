@@ -1,5 +1,4 @@
 using Example.Rbac.Api;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +13,11 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+
+    // Run database migrations on startup
+    var scope = app.Services.CreateScope();
+    using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await context.Database.MigrateAsync();
 }
 
 app.UseHttpsRedirection();
