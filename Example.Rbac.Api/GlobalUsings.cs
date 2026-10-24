@@ -5,3 +5,4 @@ global using Example.Rbac.Api.Interfaces;
 global using Example.Rbac.Api.Common;
 global using Scalar.AspNetCore;
 global using Mediator;
+global using BCrypt.Net;

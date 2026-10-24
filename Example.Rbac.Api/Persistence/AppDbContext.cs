@@ -1,5 +1,7 @@
 ﻿namespace Example.Rbac.Api.Persistence;
 
+using BCrypt.Net;
+
 public class AppDbContext(DbContextOptions<AppDbContext> options, ISessionWrapper sessionWrapper): DbContext(options)
 {
     private readonly ISessionWrapper _sessionWrapper = sessionWrapper;

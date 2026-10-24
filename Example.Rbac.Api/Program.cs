@@ -18,6 +18,7 @@ if (app.Environment.IsDevelopment())
     var scope = app.Services.CreateScope();
     using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await context.Database.MigrateAsync();
+    await DbInitializer.Initialize(context);
 }
 
 app.UseHttpsRedirection();

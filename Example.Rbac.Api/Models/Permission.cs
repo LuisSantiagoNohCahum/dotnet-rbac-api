@@ -7,4 +7,5 @@ public class Permission: Entity
     public required string Description { get; set; }
     public required string Resource { get; set; }
     public required string Action { get; set; }
+    public bool IsActive { get; set; }
 }

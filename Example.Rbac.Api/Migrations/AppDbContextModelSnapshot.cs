@@ -44,6 +44,9 @@ namespace Example.Rbac.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -92,6 +95,9 @@ namespace Example.Rbac.Api.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFullAccess")
                         .HasColumnType("bit");
 
                     b.Property<string>("Key")

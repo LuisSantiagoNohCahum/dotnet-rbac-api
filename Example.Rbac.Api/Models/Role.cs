@@ -11,5 +11,6 @@ public class Role: Entity
     /// To avoid delete the default roles.
     /// </summary>
     public bool IsDefault { get; set; }
+    public bool IsFullAccess { get; set; }
     public List<Permission> Permissions { get; set; } = [];
 }
