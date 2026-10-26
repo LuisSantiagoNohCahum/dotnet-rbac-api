@@ -6,3 +6,5 @@ global using Example.Rbac.Api.Common;
 global using Scalar.AspNetCore;
 global using Mediator;
 global using BCrypt.Net;
+global using FluentValidation;
+global using Carter;

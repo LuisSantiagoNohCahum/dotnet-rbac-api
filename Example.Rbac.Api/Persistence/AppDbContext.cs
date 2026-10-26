@@ -1,6 +1,7 @@
 ﻿namespace Example.Rbac.Api.Persistence;
 
 using BCrypt.Net;
+using Mapster;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options, ISessionWrapper sessionWrapper): DbContext(options)
 {
@@ -9,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ISessionWrappe
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<User> Users { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +38,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ISessionWrappe
             .HasMany(u => u.Roles)
             .WithMany()
             .UsingEntity<RoleAssignments>();
+
+        modelBuilder.Entity<User>()
+            .HasMany(u => u.RefreshTokens)
+            .WithOne()
+            .HasForeignKey(rt => rt.UserId);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(rt => rt.Token)
+            .IsUnique();
+
+        modelBuilder.Entity<RefreshToken>()
+            .Property(rt => rt.Token)
+            .IsRequired()
+            .HasMaxLength(250);
 
         modelBuilder.Entity<Permission>()
             .HasIndex(p => p.Key)

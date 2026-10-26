@@ -73,6 +73,47 @@ namespace Example.Rbac.Api.Migrations
                     b.ToTable("Permissions");
                 });
 
+            modelBuilder.Entity("Example.Rbac.Api.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ExpiresOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("Example.Rbac.Api.Models.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -246,6 +287,15 @@ namespace Example.Rbac.Api.Migrations
                     b.ToTable("RolePermissions", (string)null);
                 });
 
+            modelBuilder.Entity("Example.Rbac.Api.Models.RefreshToken", b =>
+                {
+                    b.HasOne("Example.Rbac.Api.Models.User", null)
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Example.Rbac.Api.Models.RoleAssignments", b =>
                 {
                     b.HasOne("Example.Rbac.Api.Models.Role", null)
@@ -278,6 +328,8 @@ namespace Example.Rbac.Api.Migrations
 
             modelBuilder.Entity("Example.Rbac.Api.Models.User", b =>
                 {
+                    b.Navigation("RefreshTokens");
+
                     b.Navigation("RoleAssignments");
                 });
 #pragma warning restore 612, 618

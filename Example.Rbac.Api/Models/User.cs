@@ -10,4 +10,5 @@ public class User: Entity
     public bool IsActive { get; set; }
     public List<Role> Roles { get; set; } = [];
     public List<RoleAssignments> RoleAssignments { get; set; } = [];
+    public List<RefreshToken> RefreshTokens { get; set; } = [];
 }

@@ -1,10 +1,74 @@
+using Carter;
 using Example.Rbac.Api;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 builder.Services.ConfigureServices(builder.Configuration);
+
+builder.Services.AddAuthentication(s =>
+{
+    s.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    s.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(opt =>
+{
+    var issuer = builder.Configuration.GetValue<string>(ConfigurationConstants.JwtIssuer);
+    var audience = builder.Configuration.GetValue<string>(ConfigurationConstants.JwtAudience);
+    var key = builder.Configuration.GetValue<string>(ConfigurationConstants.JwtKey) ?? "";
+
+    opt.TokenValidationParameters = new TokenValidationParameters
+    {
+
+        ValidateIssuer = !string.IsNullOrEmpty(issuer),
+        ValidateAudience = !string.IsNullOrEmpty(audience),
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = issuer,
+        ValidAudience = audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+    };
+});
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("per-ip", context =>
+    {
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: partition => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10, // Maximum number of requests allowed
+                Window = TimeSpan.FromMinutes(1), // Time window for the limit
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0 // No queuing, reject requests immediately when limit is reached
+            });
+    });
+
+    options.AddPolicy("per-user", context =>
+    {
+        var userEmail = context.User?.FindFirst(CustomClaims.Email)?.Value ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: userEmail,
+            factory: partition => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5, // Maximum number of requests allowed
+                Window = TimeSpan.FromMinutes(1), // Time window for the limit
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0 // No queuing, reject requests immediately when limit is reached
+            });
+    });
+});
+
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly, includeInternalTypes: true);
+builder.Services.AddCarter();
 
 var app = builder.Build();
 
@@ -22,8 +86,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.MapGet("/hello-world", () => Results.Ok("Hello, World!"))
-    .WithName("GetHelloWorld");
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
+app.MapCarter();
 
 app.Run();
