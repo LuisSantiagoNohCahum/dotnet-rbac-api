@@ -12,7 +12,7 @@ public static class Login
         public const string UserInactive = "Login.UserInactive";
     }
     public record Request(string Email, string Password) : IRequest<Result<Response>>;
-    public record Response(string Token, string RefreshToken);
+    public record Response(string AccessToken, string RefreshToken);
 
     // Configure validator behavior.
     public class Validator : AbstractValidator<Request>
@@ -37,7 +37,12 @@ public static class Login
             if (!validationResult.IsValid)
                 return Result<Response>.Failure(new (ErrorCodes.Validation, validationResult.ToString()));
             
-            var user = _dbContext.Users.FirstOrDefault(u => u.Email == request.Email);
+            var user = _dbContext.Users
+                .Include(u => u.Roles)
+                .ThenInclude(r => r.Permissions)
+                .AsSplitQuery()
+                .FirstOrDefault(u => u.Email == request.Email);
+
             if (user is null || !BCrypt.Verify(request.Password, user.HashPassword))
                 return Result<Response>.Failure(new (ErrorCodes.InvalidCredentials, "Credenciales inválidas"));
 
@@ -45,14 +50,14 @@ public static class Login
                 return Result<Response>.Failure(new(ErrorCodes.UserInactive, $"Tu cuenta esta inactiva. Contacta a soporte."));
 
             var userPermissions = user.Roles
-                .SelectMany(ur => ur.Permissions.Select(p => p.Name))
+                .SelectMany(ur => ur.Permissions.Select(p => p.Key))
                 .Distinct()
                 .ToArray();
 
             var token = _tokenService.GenerateToken(
                 new(user.Id,
                     user.Email,
-                    user.Roles.Select(ur => ur.Name).ToArray(), 
+                    user.Roles.Select(ur => ur.Key).ToArray(), 
                     userPermissions)
             );
 

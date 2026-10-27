@@ -21,7 +21,7 @@ public class TokenService(IConfiguration configuration): ITokenService
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, options.UserId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
@@ -30,10 +30,10 @@ public class TokenService(IConfiguration configuration): ITokenService
         };
 
         foreach (var role in options.Roles)
-            claims.Append(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim(ClaimTypes.Role, role));
 
         foreach (var permission in options.Permissions)
-            claims.Append(new Claim(CustomClaims.Permissions, permission));
+            claims.Add(new Claim(CustomClaims.Permissions, permission));
 
         var token = new JwtSecurityToken(
             issuer: issuer,

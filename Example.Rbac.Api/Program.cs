@@ -8,7 +8,9 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(opt => opt.CreateSchemaReferenceId = 
+    type => type.Type.FullName?.Replace("+", ".", StringComparison.Ordinal) ?? type.Type.Name);
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.ConfigureServices(builder.Configuration);
 

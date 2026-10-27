@@ -90,6 +90,9 @@ namespace Example.Rbac.Api.Migrations
                     b.Property<DateTime>("ExpiresOnUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasMaxLength(250)
