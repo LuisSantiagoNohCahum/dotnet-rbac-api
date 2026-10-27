@@ -1,15 +1,15 @@
 ﻿namespace Example.Rbac.Api.Features.Auth;
 
 using BCrypt.Net;
+using System.Text.Json;
 
 public static class Login
 {
     public static class ErrorCodes
     {
         public const string Validation = "Login.Validation";
-        public const string UserNotFound = "Login.UserNotFound";
+        public const string InvalidCredentials = "Login.InvalidCredentials";
         public const string UserInactive = "Login.UserInactive";
-        public const string InvalidPassword = "Login.InvalidPassword";
     }
     public record Request(string Email, string Password) : IRequest<Result<Response>>;
     public record Response(string Token, string RefreshToken);
@@ -38,11 +38,8 @@ public static class Login
                 return Result<Response>.Failure(new (ErrorCodes.Validation, validationResult.ToString()));
             
             var user = _dbContext.Users.FirstOrDefault(u => u.Email == request.Email);
-            if (user is null)
-                return Result<Response>.Failure(new (ErrorCodes.UserNotFound, $"User {request.Email} not found"));
-            
-            if (!BCrypt.Verify(request.Password, user.HashPassword))
-                return Result<Response>.Failure(new (ErrorCodes.InvalidPassword, "Credenciales inválidas"));
+            if (user is null || !BCrypt.Verify(request.Password, user.HashPassword))
+                return Result<Response>.Failure(new (ErrorCodes.InvalidCredentials, "Credenciales inválidas"));
 
             if (!user.IsActive)
                 return Result<Response>.Failure(new(ErrorCodes.UserInactive, $"Tu cuenta esta inactiva. Contacta a soporte."));
@@ -84,14 +81,13 @@ public class LoginEndpoint : ICarterModule
             var result = await sender.Send(request);
             if (result.IsFailure && result.Error is not null)
             {
-                return result.Error.Code switch
+                return result.Error.ToProblemDetail("/auth/login", result.Error.Code switch
                 {
-                    Login.ErrorCodes.Validation => Results.BadRequest(result.Error),
-                    Login.ErrorCodes.UserNotFound => Results.NotFound(result.Error),
-                    Login.ErrorCodes.UserInactive => Results.Forbid(),
-                    Login.ErrorCodes.InvalidPassword => Results.Unauthorized(),
-                    _ => Results.Problem(result.Error.Message)
-                };
+                    Login.ErrorCodes.Validation => StatusCodes.Status400BadRequest,
+                    Login.ErrorCodes.InvalidCredentials => StatusCodes.Status401Unauthorized,
+                    Login.ErrorCodes.UserInactive => StatusCodes.Status403Forbidden,
+                    _ => StatusCodes.Status500InternalServerError
+                });
             }
             return Results.Ok(result.Data);
         })
@@ -99,7 +95,7 @@ public class LoginEndpoint : ICarterModule
         .WithSummary("Login to the application")
         .WithDescription("Login to the application")
         .Accepts<Login.Request>("application/json")
-        .Produces<Login.Response>(200)
+        .Produces<Login.Response>(StatusCodes.Status200OK)
         .RequireRateLimiting("per-ip");
     }
 }

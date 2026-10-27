@@ -12,6 +12,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 builder.Services.ConfigureServices(builder.Configuration);
 
+// Configure problem details and exeption handler midleware.
+// builder.Services.AddProblemDetails();
+
 builder.Services.AddAuthentication(s =>
 {
     s.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
