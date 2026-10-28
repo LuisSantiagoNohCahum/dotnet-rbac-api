@@ -11,11 +11,10 @@ public static class Renew
         public const string RefreshTokenUserInactive = "RefreshToken.UserInactive";
     }
 
-    public record Request(string RefreshToken): IRequest<Result<Response>>;
-    // To avoid duplicate responses, use contracts for the response.
-    public record Response(string AccessToken, string RefreshToken);
+    public record RenewTokenRequest(string RefreshToken): IRequest<Result<RenewTokenResponse>>;
+    public record RenewTokenResponse(string AccessToken, string RefreshToken);
 
-    public class Validator : AbstractValidator<Request>
+    public class Validator : AbstractValidator<RenewTokenRequest>
     {
         public Validator()
         {
@@ -25,24 +24,24 @@ public static class Renew
         }
     }
 
-    internal sealed class Handler(AppDbContext dbContext, ITokenService tokenService, IValidator<Request> validator)
-        : IRequestHandler<Request, Result<Response>>
+    internal sealed class Handler(AppDbContext dbContext, ITokenService tokenService, IValidator<RenewTokenRequest> validator)
+        : IRequestHandler<RenewTokenRequest, Result<RenewTokenResponse>>
     {
         private readonly ITokenService _tokenService = tokenService;
-        private readonly IValidator<Request> _validator = validator;
+        private readonly IValidator<RenewTokenRequest> _validator = validator;
         private readonly AppDbContext _dbContext = dbContext;
-        public async ValueTask<Result<Response>> Handle(Request request, CancellationToken cancellationToken)
+        public async ValueTask<Result<RenewTokenResponse>> Handle(RenewTokenRequest request, CancellationToken cancellationToken)
         {
             var validationResult = _validator.Validate(request);
             if (!validationResult.IsValid)
-                return Result<Response>.Failure(new(
+                return Result<RenewTokenResponse>.Failure(new(
                     ErrorCodes.RefreshTokenValidation, validationResult.ToString()));
 
             var refreshToken = _dbContext.RefreshTokens
                 .FirstOrDefault(rt => rt.Token == request.RefreshToken);
 
             if (refreshToken is null || refreshToken.IsRevoked || refreshToken.ExpiresOnUtc < DateTime.UtcNow)
-                return Result<Response>.Failure(new(ErrorCodes.RefreshTokenInvalid, 
+                return Result<RenewTokenResponse>.Failure(new(ErrorCodes.RefreshTokenInvalid, 
                     "El token de renovación es inválido o ha expirado."));
 
             var user = await _dbContext.Users
@@ -52,7 +51,7 @@ public static class Renew
                 .FirstOrDefaultAsync(u => u.Id == refreshToken.UserId, cancellationToken);
 
             if (user is null || !user.IsActive)
-                return Result<Response>.Failure(new(ErrorCodes.RefreshTokenUserInactive, 
+                return Result<RenewTokenResponse>.Failure(new(ErrorCodes.RefreshTokenUserInactive, 
                     "El usuario asociado al token de renovación está inactivo."));
             
             var userPermissions = user.Roles
@@ -66,7 +65,7 @@ public static class Renew
 
             refreshToken.IsRevoked = true;
             await _dbContext.SaveChangesAsync(cancellationToken);
-            return Result<Response>.Success(new(newAccessToken, newRefreshToken));
+            return Result<RenewTokenResponse>.Success(new(newAccessToken, newRefreshToken));
         }
     }
 }
@@ -75,7 +74,7 @@ public sealed class RenewEndpoint : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
-        app.MapPost("refresh-tokens/renew", async (Renew.Request request, IMediator mediator) =>
+        app.MapPost("refresh-tokens/renew", async (Renew.RenewTokenRequest request, ISender mediator) =>
         {
             var result = await mediator.Send(request);
             if (result.IsFailure && result.Error is not null)
@@ -93,8 +92,8 @@ public sealed class RenewEndpoint : ICarterModule
         .WithTags(EndpointTags.RefreshTokens)
         .WithSummary("Renew tokens.")
         .WithDescription("Allow renew the access and refresh tokens.")
-        .Accepts<Renew.Request>("application/json")
-        .Produces<Renew.Response>(StatusCodes.Status200OK)
+        .Accepts<Renew.RenewTokenRequest>("application/json")
+        .Produces<Renew.RenewTokenResponse>(StatusCodes.Status200OK)
         .RequireRateLimiting("per-ip");
     }
 }

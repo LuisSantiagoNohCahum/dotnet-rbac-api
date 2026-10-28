@@ -11,11 +11,11 @@ public static class Login
         public const string InvalidCredentials = "Login.InvalidCredentials";
         public const string UserInactive = "Login.UserInactive";
     }
-    public record Request(string Email, string Password) : IRequest<Result<Response>>;
-    public record Response(string AccessToken, string RefreshToken);
+    public record LoginRequest(string Email, string Password) : IRequest<Result<LoginResponse>>;
+    public record LoginResponse(string AccessToken, string RefreshToken);
 
     // Configure validator behavior.
-    public class Validator : AbstractValidator<Request>
+    public class Validator : AbstractValidator<LoginRequest>
     {
         public Validator()
         {
@@ -24,18 +24,18 @@ public static class Login
         }
     }
 
-    internal sealed class Handler(AppDbContext dbContext, ITokenService tokenService, IValidator<Request> validator)
-        : IRequestHandler<Request, Result<Response>>
+    internal sealed class Handler(AppDbContext dbContext, ITokenService tokenService, IValidator<LoginRequest> validator)
+        : IRequestHandler<LoginRequest, Result<LoginResponse>>
     {       
         private readonly ITokenService _tokenService = tokenService;
-        private readonly IValidator<Request> _validator = validator;
+        private readonly IValidator<LoginRequest> _validator = validator;
         private readonly AppDbContext _dbContext = dbContext;
 
-        public async ValueTask<Result<Response>> Handle(Request request, CancellationToken cancellationToken)
+        public async ValueTask<Result<LoginResponse>> Handle(LoginRequest request, CancellationToken cancellationToken)
         {
             var validationResult = _validator.Validate(request);
             if (!validationResult.IsValid)
-                return Result<Response>.Failure(new (ErrorCodes.Validation, validationResult.ToString()));
+                return Result<LoginResponse>.Failure(new (ErrorCodes.Validation, validationResult.ToString()));
             
             var user = _dbContext.Users
                 .Include(u => u.Roles)
@@ -44,10 +44,10 @@ public static class Login
                 .FirstOrDefault(u => u.Email == request.Email);
 
             if (user is null || !BCrypt.Verify(request.Password, user.HashPassword))
-                return Result<Response>.Failure(new (ErrorCodes.InvalidCredentials, "Credenciales inválidas"));
+                return Result<LoginResponse>.Failure(new (ErrorCodes.InvalidCredentials, "Credenciales inválidas"));
 
             if (!user.IsActive)
-                return Result<Response>.Failure(new(ErrorCodes.UserInactive, $"Tu cuenta esta inactiva. Contacta a soporte."));
+                return Result<LoginResponse>.Failure(new(ErrorCodes.UserInactive, $"Tu cuenta esta inactiva. Contacta a soporte."));
 
             var userPermissions = user.Roles
                 .SelectMany(ur => ur.Permissions.Select(p => p.Key))
@@ -72,7 +72,7 @@ public static class Login
 
             await _dbContext.SaveChangesAsync();
 
-            return new Response(token, refreshToken);
+            return new LoginResponse(token, refreshToken);
         }
     }
 }
@@ -81,7 +81,7 @@ public class LoginEndpoint : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
-        app.MapPost("/auth/login", async (Login.Request request, ISender sender) =>
+        app.MapPost("/auth/login", async (Login.LoginRequest request, ISender sender) =>
         {
             var result = await sender.Send(request);
             if (result.IsFailure && result.Error is not null)
@@ -99,8 +99,8 @@ public class LoginEndpoint : ICarterModule
         .WithTags(EndpointTags.Authentication)
         .WithSummary("Login to the application")
         .WithDescription("Login to the application")
-        .Accepts<Login.Request>("application/json")
-        .Produces<Login.Response>(StatusCodes.Status200OK)
+        .Accepts<Login.LoginRequest>("application/json")
+        .Produces<Login.LoginResponse>(StatusCodes.Status200OK)
         .RequireRateLimiting("per-ip");
     }
 }

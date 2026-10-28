@@ -3,13 +3,13 @@ using Example.Rbac.Api;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using System.Text;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi(opt => opt.CreateSchemaReferenceId = 
-    type => type.Type.FullName?.Replace("+", ".", StringComparison.Ordinal) ?? type.Type.Name);
+builder.Services.AddOpenApi();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.ConfigureServices(builder.Configuration);
@@ -17,6 +17,7 @@ builder.Services.ConfigureServices(builder.Configuration);
 // Configure problem details and exeption handler midleware.
 // builder.Services.AddProblemDetails();
 
+// TODO. Use cookies for store the JWT.
 builder.Services.AddAuthentication(s =>
 {
     s.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
