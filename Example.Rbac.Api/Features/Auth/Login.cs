@@ -12,7 +12,7 @@ public static class Login
         public const string UserInactive = "Login.UserInactive";
     }
     public record LoginRequest(string Email, string Password) : IRequest<Result<LoginResponse>>;
-    public record LoginResponse(string AccessToken, string RefreshToken);
+    public record LoginResponse(string AccessToken, string RefreshToken, bool IsTwoFactorEnabled);
 
     // Configure validator behavior.
     public class Validator : AbstractValidator<LoginRequest>
@@ -35,8 +35,8 @@ public static class Login
         {
             var validationResult = _validator.Validate(request);
             if (!validationResult.IsValid)
-                return Result<LoginResponse>.Failure(new (ErrorCodes.Validation, validationResult.ToString()));
-            
+                return Result<LoginResponse>.Failure(new(ErrorCodes.Validation, validationResult.ToString()));
+
             var user = _dbContext.Users
                 .Include(u => u.Roles)
                 .ThenInclude(r => r.Permissions)
@@ -44,11 +44,15 @@ public static class Login
                 .FirstOrDefault(u => u.Email == request.Email);
 
             if (user is null || !BCrypt.Verify(request.Password, user.HashPassword))
-                return Result<LoginResponse>.Failure(new (ErrorCodes.InvalidCredentials, "Credenciales inválidas"));
+                return Result<LoginResponse>.Failure(new(ErrorCodes.InvalidCredentials, "Credenciales inválidas"));
 
             if (!user.IsActive)
                 return Result<LoginResponse>.Failure(new(ErrorCodes.UserInactive, $"Tu cuenta esta inactiva. Contacta a soporte."));
-
+            
+            // Enviar a un aggregator o a una cola con outofbox pattern, nunca exponer datos del envio al usuario.
+            if (user.EnableTwoFactorAuth)
+                return new LoginResponse(string.Empty, string.Empty, true);
+            
             var userPermissions = user.Roles
                 .SelectMany(ur => ur.Permissions.Select(p => p.Key))
                 .Distinct()
@@ -71,8 +75,7 @@ public static class Login
             });
 
             await _dbContext.SaveChangesAsync();
-
-            return new LoginResponse(token, refreshToken);
+            return new LoginResponse(token, refreshToken, false);
         }
     }
 }
