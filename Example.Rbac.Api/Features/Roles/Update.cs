@@ -62,7 +62,10 @@ public static class Update
                     new (ErrorCodes.UpdateRoleValidation, validationResult.ToString()));
             }
 
-            var role = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Id == request.Id);
+            // Ensure load the relation permission entity for apply delete relations on update.
+            var role = await _dbContext.Roles
+                .Include(p => p.Permissions)
+                .FirstOrDefaultAsync(r => r.Id == request.Id);
 
             if (role is null)
             {
@@ -88,7 +91,7 @@ public static class Update
                     .Where(p => request.Permissions.Contains(p.Id))
                     .ToListAsync();
 
-                role.Permissions.AddRange(permissions);
+                role.Permissions = permissions;
             }
 
             await _dbContext.SaveChangesAsync();
