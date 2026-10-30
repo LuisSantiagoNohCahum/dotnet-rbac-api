@@ -11,6 +11,7 @@ public static class Login
         public const string InvalidCredentials = "Login.InvalidCredentials";
         public const string UserInactive = "Login.UserInactive";
     }
+
     public record LoginRequest(string Email, string Password) : IRequest<Result<LoginResponse>>;
     public record LoginResponse(string AccessToken, string RefreshToken, bool IsTwoFactorEnabled);
 

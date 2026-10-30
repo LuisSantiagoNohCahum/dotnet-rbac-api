@@ -30,7 +30,6 @@ builder.Services.AddAuthentication(s =>
 
     opt.TokenValidationParameters = new TokenValidationParameters
     {
-
         ValidateIssuer = !string.IsNullOrEmpty(issuer),
         ValidateAudience = !string.IsNullOrEmpty(audience),
         ValidateLifetime = true,
@@ -96,5 +95,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapCarter();
+
+// TODO. Add validattion behavior.
+// TODO. Add global exception hanlder.
 
 app.Run();
